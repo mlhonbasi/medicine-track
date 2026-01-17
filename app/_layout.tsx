@@ -1,24 +1,32 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { useEffect } from 'react';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
-
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+export default function Layout() {
+  useEffect(() => {
+    Notifications.requestPermissionsAsync();
+  }, []);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <Stack
+      screenOptions={{
+        contentStyle: { backgroundColor: '#F8F9FA' },
+      }}
+    >
+      {/* index header'ını kapat */}
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+
+      {/* add ekranında header kalsın */}
+      <Stack.Screen
+        name="add"
+        options={{
+          title: 'Yeni İlaç Ekle',
+          presentation: 'modal',
+          headerStyle: { backgroundColor: '#F8F9FA' },
+          headerShadowVisible: false,
+          headerTitleStyle: { fontWeight: 'bold', fontSize: 20 },
+        }}
+      />
+    </Stack>
   );
 }

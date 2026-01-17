@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "MedicTrack",
-    "slug": "MedicTrack",
+    "slug": "medic-track",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -12,6 +12,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.mlh.medictrack",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -43,6 +44,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "78d946bb-1e95-45e0-baca-06c17b9f2390"
+      }
+    },
+    "owner": "draig"
   }
 }
