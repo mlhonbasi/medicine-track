@@ -30,20 +30,17 @@ export default function Home() {
   const { ready, getProfiles, updateProfile, getMedicines, deleteMedicines, addProfile, deleteProfile } = useDatabase();
 
   const loadData = useCallback(async () => {
-    if (!ready) return; // DB hazır değilse işlem yapma
+    if (!ready) return;
 
     const allProfiles = await getProfiles();
     setProfiles(allProfiles);
 
-    // Aktif profil kontrolü
     if (activeProfile) {
       const stillExists = allProfiles.find((p: any) => p.id === activeProfile.id);
       if (stillExists) {
-        // Profil hala varsa ilaçlarını güncelle
         const meds = await getMedicines(activeProfile.id);
         setMyMeds(meds);
       } else {
-        // Profil silindiyse oturumu kapat
         setActiveProfile(null);
         setMyMeds([]);
       }
@@ -78,13 +75,12 @@ export default function Home() {
     loadData();
   };
 
-  // 3. SORU ÇÖZÜMÜ: PROFİL SEÇİM EKRANI (Netflix Stili)
   if (!activeProfile) {
     return (
       <SafeAreaView style={styles.fullScreenSelector}>
         <Text style={styles.welcomeTitle}>Kim Kullanıyor?</Text>
         <View style={styles.selectorGrid}>
-          {profiles.map((p: any) => ( // 'p' tip hatası burada çözüldü
+          {profiles.map((p: any) => (
             <View key={p.id} style={styles.selectorWrapper}>
               <TouchableOpacity 
                 style={[styles.selectorAvatar, { backgroundColor: p.color }]} 
@@ -168,7 +164,6 @@ export default function Home() {
           <View style={styles.emptyContainer}>
             <Pill size={64} color="#E5E7EB" />
             <Text style={styles.emptyText}>Henüz ilaç eklenmemiş.</Text>
-            {/* 'emptySubText' hatası stil eklenerek çözüldü */}
             <Text style={styles.emptySubText}>{activeProfile.name} için liste boş.</Text>
           </View>
         }
@@ -180,6 +175,7 @@ export default function Home() {
           dailyDose={item.daily_dose}
           daysLeft={item.daysLeft}
           startDateText={item.startDateText}
+          endDateText={item.endDateText}
           onDelete={async (id: number) => {
           await deleteMedicines(id);
           const meds = await getMedicines(activeProfile.id);
@@ -195,7 +191,7 @@ export default function Home() {
   onPress={() =>
     router.push({
       pathname: '/add',
-      params: { profileId: String(activeProfile.id) }, // string yap
+      params: { profileId: String(activeProfile.id) },
     })
   }
 >
@@ -214,7 +210,6 @@ const styles = StyleSheet.create({
   dot: { width: 10, height: 10, borderRadius: 5, marginRight: 8 },
   profileText: { fontSize: 15, fontWeight: '700', color: '#374151', marginRight: 4 },
   
-  // FAB Kesin Çözüm: zIndex ve Elevation çok önemli
   fab: { 
     position: 'absolute', 
     bottom: 40, 
@@ -224,8 +219,8 @@ const styles = StyleSheet.create({
     borderRadius: 33, 
     justifyContent: 'center', 
     alignItems: 'center', 
-    elevation: 20, // Android için
-    zIndex: 9999, // iOS için
+    elevation: 20,
+    zIndex: 9999,
     shadowColor: '#000', 
     shadowOpacity: 0.4, 
     shadowRadius: 10,
@@ -255,5 +250,5 @@ const styles = StyleSheet.create({
 
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100 },
   emptyText: { fontSize: 20, fontWeight: '700', color: '#374151', marginTop: 20 },
-  emptySubText: { fontSize: 14, color: '#6B7280', marginTop: 5 } // Bu stil eklendi
+  emptySubText: { fontSize: 14, color: '#6B7280', marginTop: 5 }
 });

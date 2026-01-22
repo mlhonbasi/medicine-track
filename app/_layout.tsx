@@ -13,10 +13,8 @@ export default function Layout() {
         contentStyle: { backgroundColor: '#F8F9FA' },
       }}
     >
-      {/* index header'ını kapat */}
       <Stack.Screen name="index" options={{ headerShown: false }} />
 
-      {/* add ekranında header kalsın */}
       <Stack.Screen
         name="add"
         options={{

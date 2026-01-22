@@ -4,7 +4,6 @@ import * as SQLite from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
-// Bildirimlerin nasıl görüneceğini ayarlıyoruz
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -31,7 +30,6 @@ export const useDatabase = () => {
       if (req.status !== 'granted') return false;
     }
 
-    // Android için channel (özellikle önemli)
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
         name: 'Default',
@@ -45,11 +43,9 @@ export const useDatabase = () => {
   useEffect(() => {
     const initDB = async () => {
       const database = await SQLite.openDatabaseAsync('meds.db');
-
-      // FK her bağlantıda açılmalı
+  
       await database.execAsync('PRAGMA foreign_keys = ON;');
 
-      // Önce parent tablo (profiles), sonra child (medicines) daha güvenli
       await database.execAsync(`
         CREATE TABLE IF NOT EXISTS profiles (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,7 +88,6 @@ export const useDatabase = () => {
   const deleteProfile = async (id: number) => {
     const db = ensureDb();
 
-    // 1) Profilin tüm ilaçlarının bildirimlerini iptal et
     const rows: any[] = await db.getAllAsync(
       'SELECT notification_id FROM medicines WHERE profile_id = ? AND notification_id IS NOT NULL',
       [id]
@@ -103,11 +98,10 @@ export const useDatabase = () => {
       try {
         await Notifications.cancelScheduledNotificationAsync(r.notification_id);
       } catch {
-        // zaten tetiklenmiş/iptal edilmiş olabilir
+
       }
     }
 
-    // 2) Profili sil (cascade ile medicines de silinir)
     await db.runAsync('DELETE FROM profiles WHERE id = ?', [id]);
   };
 
@@ -124,11 +118,21 @@ export const useDatabase = () => {
     if (!Number.isFinite(total) || total <= 0) throw new Error('Toplam adet 0 olamaz.');
     if (!Number.isFinite(daily) || daily <= 0) throw new Error('Günlük doz 0 olamaz.');
 
+    const profileRow: any = await db.getFirstAsync(
+      'SELECT name FROM profiles WHERE id = ?', 
+      [profileId]
+    );
+    const profileName = profileRow?.name || "Kullanıcı";
+
+
     const daysDuration = Math.ceil(total / daily);
 
     const startDate = new Date();
     const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + daysDuration);
+    endDate.setDate(startDate.getDate() + (daysDuration - 1));
+
+    const twoDaysBefore = new Date();
+    twoDaysBefore.setDate(endDate.getDate() - 2);
 
     const notifyAt = new Date(endDate);
     if (notifyAt.getTime() <= Date.now()) {
@@ -137,33 +141,43 @@ export const useDatabase = () => {
     }
 
 
-    // 1) DB'ye kaydet
+    
     const result = await db.runAsync(
       'INSERT INTO medicines (profile_id, name, total_tablets, daily_dose, start_date, end_date) VALUES (?,?,?,?,?,?)',
       [profileId, name, total, daily, startDate.toISOString(), endDate.toISOString()]
     );
 
-    // 2) Bildirimi planla (izin yoksa sadece DB kaydı kalır)
-    let notifId: string | null = null;
     const ok = await ensureNotificationReady();
+    let notifIds: string[] = [];
 
     if (ok) {
-      notifId = await Notifications.scheduleNotificationAsync({
+    // BİLDİRİM 1: 2 GÜN ÖNCESİ (Sadece ilaç süresi 2 günden fazlaysa)
+    if (daysDuration > 2 && twoDaysBefore.getTime() > Date.now()) {
+      const id1 = await Notifications.scheduleNotificationAsync({
         content: {
-          title: 'İlacın Bitti! ⚠️',
-          body: `${name} için bugün son tabletleri kullandın. Yenisini almalısın.`,
+          title: `${profileName}: İlacın Azalıyor! ⚠️`,
+          body: `${name} ilacı için yaklaşık 2 günlük dozun kaldı. Yenisini almayı unutma.`,
           ...(Platform.OS === 'android' ? { channelId: 'default' } : {}),
         },
-        trigger: {
-          type: SchedulableTriggerInputTypes.DATE,
-          date: notifyAt,
-        },
+        trigger: { type: SchedulableTriggerInputTypes.DATE, date: twoDaysBefore },
       });
+      notifIds.push(id1);
+      }
+
+    // BİLDİRİM 2: SON GÜN
+      const id2 = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `${profileName}: İlaç Bitti! ⚠️`,
+          body: `${profileName} için ${name} ilacı bugün bitti. Yenisini almalısın.`,
+          ...(Platform.OS === 'android' ? { channelId: 'default' } : {}),
+        },
+        trigger: { type: SchedulableTriggerInputTypes.DATE, date: endDate },
+      });
+      notifIds.push(id2);
     }
 
-// 3) notification_id'yi yaz (null olabilir)
     await db.runAsync('UPDATE medicines SET notification_id = ? WHERE id = ?', [
-      notifId,
+      notifIds.join(','),
       result.lastInsertRowId,
     ]);
   };
@@ -202,28 +216,26 @@ export const useDatabase = () => {
         totalDays,
         daysLeft,
         startDateText: m.start_date ? formatTR(m.start_date) : null,
+        endDateText: m.end_date ? formatTR(m.end_date) : null,
       };
     });
   };
 
   const deleteMedicines = async (id: number) => {
     const db = ensureDb();
-
-    const row: any = await db.getFirstAsync(
-      'SELECT notification_id FROM medicines WHERE id = ?',
-      [id]
-    );
+    const row: any = await db.getFirstAsync('SELECT notification_id FROM medicines WHERE id = ?', [id]);
 
     if (row?.notification_id) {
-      try {
-        await Notifications.cancelScheduledNotificationAsync(row.notification_id);
-      } catch {
-        // zaten gitmiş olabilir
+      const ids = row.notification_id.split(',');
+      for (const notifId of ids) {
+        try {
+          await Notifications.cancelScheduledNotificationAsync(notifId);
+        } catch (e) {}
       }
     }
 
     await db.runAsync('DELETE FROM medicines WHERE id = ?', [id]);
-  };
+};
 
   return {
     ready,

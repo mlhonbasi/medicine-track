@@ -1,4 +1,4 @@
-import { Activity, Pill, Trash2 } from 'lucide-react-native'; // Activity ikonu eklendi
+import { Activity, Pill, Trash2 } from 'lucide-react-native';
 import React, { useEffect } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -15,11 +15,12 @@ interface MedicineProps {
   totalDays: number;
   dailyDose: number;
   startDateText?: string | null;
+  endDateText?: string | null;
   onDelete: (id: number) => void;
 }
 
-export const MedicineCard = ({ id, name, daysLeft, totalDays, dailyDose, startDateText, onDelete }: MedicineProps) => {
-  // progress: Çubuğun ne kadar dolacağını belirler (Tüketilen miktar)
+export const MedicineCard = ({ id, name, daysLeft, totalDays, dailyDose, startDateText, endDateText, onDelete }: MedicineProps) => {
+
   const safeTotalDays = totalDays > 0 ? totalDays : 1;
   const safeDaysLeft = Math.max(0, Math.min(daysLeft, safeTotalDays));
 
@@ -34,13 +35,10 @@ export const MedicineCard = ({ id, name, daysLeft, totalDays, dailyDose, startDa
     progressWidth.value = withTiming(progress, { duration: 1000 });
   }, [progress]);
 
-  // --- ORAN BAZLI DİNAMİK RENK MANTIĞI ---
   const getStatusColor = (ratio: number) => {
-    // Stok %20'nin altına düştüyse KRİTİK
+    
     if (ratio <= 0.2) return { bg: '#FEF2F2', text: '#EF4444', bar: '#EF4444' }; 
-    // Stok %20 - %50 arasındaysa DİKKAT
     if (ratio <= 0.5) return { bg: '#FFFBEB', text: '#F59E0B', bar: '#F59E0B' }; 
-    // Stok %50'den fazlaysa RAHAT
     return { bg: '#F0FDF4', text: '#22C55E', bar: '#22C55E' }; 
   };
 
@@ -81,8 +79,7 @@ export const MedicineCard = ({ id, name, daysLeft, totalDays, dailyDose, startDa
           <View style={{ flex: 1 }}>
             <Text style={styles.name}>{name}</Text>
             
-            <View style={styles.infoRow}>
-               {/* Günlük Doz Bilgisi */}       
+            <View style={styles.infoRow}>    
                <View style={styles.doseBadge}>
                 <Activity size={12} color="#6B7280" style={{ marginRight: 4 }} />
                 <Text style={styles.doseText}>Günde {dailyDose} adet</Text>
@@ -93,7 +90,10 @@ export const MedicineCard = ({ id, name, daysLeft, totalDays, dailyDose, startDa
             </View>
             {startDateText ? (
              <Text style={styles.meta}>• Eklendi: {startDateText}</Text>
-) : null}
+            ) : null}
+            {endDateText ? (
+             <Text style={styles.meta}>• Bitiş: {endDateText}</Text>
+            ) : null}
           </View>
 
           <TouchableOpacity onPress={confirmDelete} style={styles.deleteButton}>

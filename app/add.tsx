@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import { router, useLocalSearchParams } from 'expo-router'; // useLocalSearchParams eklendi
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useDatabase } from '../hooks/use-database';
@@ -9,7 +9,6 @@ export default function AddMedicine() {
   const pid = Array.isArray(profileId) ? profileId[0] : profileId;
   const profileIdNum = Number(pid);
 
-  // return; yerine null dön (React için daha doğru)
   if (!Number.isFinite(profileIdNum)) {
     Alert.alert("Hata", "Aktif profil bulunamadı.");
     return null;
@@ -23,7 +22,7 @@ export default function AddMedicine() {
 
   const goBackSafe = () => {
     if (router.canGoBack()) router.back();
-    else router.replace('/'); // garanti dönüş
+    else router.replace('/');
   };
 
   const handleSave = async () => {
@@ -53,7 +52,7 @@ export default function AddMedicine() {
 
   return (
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
-      {/* Şık bir bilgilendirme notu */}
+
       <View style={styles.headerInfo}>
         <Text style={styles.headerTitle}>Yeni İlaç Ekle</Text>
         <Text style={styles.headerSub}>İlaç bilgilerini girerek takibi başlatın.</Text>
