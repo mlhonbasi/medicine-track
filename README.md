@@ -1,50 +1,70 @@
-# Welcome to your Expo app 👋
+# Medicine Track
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aile bireyleri için çoklu profil destekli, bildirimlerle ilaç takibi yapan bir mobil uygulama. Sunucu ya da hesap gerektirmez — tüm veriler cihazda tutulur.
 
-## Get started
+## Özellikler
 
-1. Install dependencies
+- **Çoklu profil** — her aile üyesi için ayrı renk/avatar ile ayrı ilaç listesi.
+- **İlaç ekleme** — ilaç adı, toplam adet ve günlük doz girilir; kullanım süresi ve bitiş tarihi otomatik hesaplanır.
+- **Aktif / Bitenler sekmeleri** — süresi dolan ilaçlar listeden kaybolmak yerine "Bitenler" sekmesinde geçmiş olarak kalır.
+- **Renk kodlu ilerleme çubuğu** — kalan güne göre yeşilden kırmızıya değişen görsel uyarı.
+- **Bildirimler** — ilaç bitmeden 2 gün önce ve bittiği gün hatırlatma.
+- **Tamamen yerel veri** — expo-sqlite ile cihaz üzerinde saklama, internet bağlantısı gerektirmez.
 
-   ```bash
-   npm install
-   ```
+## Teknoloji
 
-2. Start the app
+- [Expo](https://expo.dev) 54 · React Native 0.81 · React 19 · TypeScript
+- [expo-router](https://docs.expo.dev/router/introduction) — dosya tabanlı yönlendirme
+- [expo-sqlite](https://docs.expo.dev/versions/latest/sdk/sqlite) — yerel veritabanı
+- [expo-notifications](https://docs.expo.dev/versions/latest/sdk/notifications) — bildirim zamanlama
+- [react-native-reanimated](https://docs.swmansion.com/react-native-reanimated) — animasyonlar
+- [lucide-react-native](https://lucide.dev) — ikonlar
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Geliştirme ortamında çalıştırma
 
 ```bash
-npm run reset-project
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Bu komut Metro bundler'ı başlatır ve terminalde bir QR kod ile birlikte şu kısayolları gösterir:
 
-## Learn more
+- `a` — bağlı bir Android cihazda/emülatörde açar
+- `i` — iOS simulator'da açar (yalnızca macOS)
+- `w` — web tarayıcısında açar
+- QR kodu telefonundan taratmak — Expo Go veya kendi development build'in yüklüyse onu açar
 
-To learn more about developing your project with Expo, look at the following resources:
+Bu proje `expo-dev-client` kullandığı için, tam özellikli test için (özellikle bildirimler) genel Expo Go yerine aşağıdaki development build'i kurman önerilir.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Kendi build'ini almak (EAS)
 
-## Join the community
+Proje [EAS Build](https://docs.expo.dev/build/introduction/) için hazır (`eas.json`) ve üç profil tanımlı:
 
-Join our community of developers creating universal apps.
+| Profil | Ne işe yarar |
+|---|---|
+| `development` | Cihazına/emülatöre kurup `npx expo start` ile canlı geliştirme yapmanı sağlayan dev client |
+| `preview` | Test için paylaşılabilir, kurulabilir APK |
+| `production` | Yayın APK'sı (Play Store'a değil, doğrudan kuruluma uygun `.apk`) |
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+npm install -g eas-cli
+eas login
+eas build --profile development --platform android   # geliştirme sırasında kullanılacak build
+eas build --profile preview --platform android        # test için paylaşılabilir APK
+eas build --profile production --platform android      # yayın APK'sı
+```
+
+Build tamamlandığında EAS bir indirme linki verir; APK'yı Android cihazına indirip kurabilirsin (bilinmeyen kaynaklardan yüklemeye izin vermen gerekebilir). iOS build'i için Apple Developer hesabı ve macOS/EAS submit akışı gerekir.
+
+## Proje yapısı
+
+```
+app/
+  index.tsx          # profil seçimi + ilaç listesi (Aktif/Bitenler)
+  add.tsx            # yeni ilaç ekleme ekranı
+  _layout.tsx         # kök stack navigasyonu
+components/
+  medicine-card.tsx  # ilaç kartı: ilerleme çubuğu, durum, silme
+hooks/
+  use-database.tsx   # SQLite CRUD + bildirim zamanlama
+```
