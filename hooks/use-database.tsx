@@ -199,17 +199,21 @@ export const useDatabase = () => {
       const totalTablets = Number(m.total_tablets);
       const dailyDose = Number(m.daily_dose);
 
-      const totalDays =
-        Number.isFinite(totalTablets) && Number.isFinite(dailyDose) && dailyDose > 0
-          ? Math.ceil(totalTablets / dailyDose)
-          : 0;
+      const totalDays = Math.ceil(totalTablets / dailyDose);
 
-      const daysLeft = m.end_date
-        ? Math.max(
-            0,
-            Math.ceil((new Date(m.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-          )
-        : totalDays;
+  // 2. KALAN GÜN HESABI (Kritik nokta: Tarih farkını milisaniye bazlı değil, gün bazlı almalıyız)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Saati sıfırla ki gün tam çıksın
+      
+      const end = new Date(m.end_date);
+      end.setHours(0, 0, 0, 0);
+
+      // Bitiş tarihi ile bugün arasındaki farkı gün olarak bul
+      const diffTime = end.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      // Eğer bugün bittiyse (veya geçtiyse) 0 dönsün, yoksa kalan gün
+      const daysLeft = Math.max(0, diffDays + 1);
 
       return {
         ...m,

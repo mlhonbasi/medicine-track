@@ -21,6 +21,7 @@ export default function Home() {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [activeProfile, setActiveProfile] = useState<any>(null);
   const [myMeds, setMyMeds] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [isProfileModalVisible, setProfileModalVisible] = useState(false);
   const [newProfileName, setNewProfileName] = useState('');
   const [editingProfileId, setEditingProfileId] = useState<number | null>(null);
@@ -31,35 +32,41 @@ export default function Home() {
 
   const loadData = useCallback(async () => {
     if (!ready) return;
-
     const allProfiles = await getProfiles();
     setProfiles(allProfiles);
 
     if (activeProfile) {
-      const stillExists = allProfiles.find((p: any) => p.id === activeProfile.id);
-      if (stillExists) {
+    const stillExists = allProfiles.find((p: any) => p.id === activeProfile.id);
+    if (stillExists) {
+      if (activeProfile.id != null) {
         const meds = await getMedicines(activeProfile.id);
-        setMyMeds(meds);
-      } else {
-        setActiveProfile(null);
-        setMyMeds([]);
+        setMyMeds(meds || []);
       }
+    } else {
+      setActiveProfile(null);
+      setMyMeds([]);
     }
-    }, [ready, activeProfile, getProfiles, getMedicines]);
+  }
+}, [ready, activeProfile, getProfiles, getMedicines]);
 
-    useFocusEffect(
-      useCallback(() => {
-        loadData();
-      }, [loadData])
-      );
+  useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
+  useEffect(() => {
+    if (ready && activeProfile) {
+      getMedicines(activeProfile.id).then(setMyMeds);
+    }
+  }, [activeProfile, ready]);
 
-    useEffect(() => {
-        if (ready && activeProfile) {
-          getMedicines(activeProfile.id).then(setMyMeds);
-        }
-      }, [activeProfile, ready]);
+  const activeMeds = (myMeds || []).filter(m => {
+  const left = m.daysLeft ?? 0;
+  return left > 0;
+});
 
+const completedMeds = (myMeds || []).filter(m => {
+  const left = m.daysLeft ?? 0;
+  return left <= 0;
+});
+  const displayMeds = activeTab === 'active' ? activeMeds : completedMeds;
 
   const handleSaveProfile = async () => {
     if (!newProfileName.trim()) return;
@@ -112,7 +119,6 @@ export default function Home() {
               </View>
             </View>
           ))}
-          
           <TouchableOpacity style={styles.selectorWrapper} onPress={() => { setEditingProfileId(null); setProfileModalVisible(true); }}>
             <View style={[styles.selectorAvatar, styles.addAvatar]}>
               <Plus color="#9CA3AF" size={30} />
@@ -144,7 +150,6 @@ export default function Home() {
     );
   }
 
-  // ANA SAYFA
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -156,48 +161,66 @@ export default function Home() {
         </TouchableOpacity>
       </View>
 
+<View style={styles.tabContainer}>
+  <TouchableOpacity 
+    activeOpacity={0.7}
+    style={[
+      styles.tabButton, 
+      activeTab === 'active' && { backgroundColor: activeProfile.color }
+    ]} 
+    onPress={() => setActiveTab('active')}
+  >
+    <Text style={[styles.tabText, activeTab === 'active' && styles.activeTabText]}>Aktif</Text>
+  </TouchableOpacity>
+
+  <TouchableOpacity 
+    activeOpacity={0.7}
+    style={[
+      styles.tabButton, 
+      activeTab === 'completed' && { backgroundColor: activeProfile.color }
+    ]} 
+    onPress={() => setActiveTab('completed')}
+  >
+    <Text style={[styles.tabText, activeTab === 'completed' && styles.activeTabText]}>Bitenler</Text>
+  </TouchableOpacity>
+</View>
+
       <FlatList
-        data={myMeds}
+        data={displayMeds}
         contentContainerStyle={{ paddingBottom: 150, paddingTop: 10 }}
         keyExtractor={(item) => item.id.toString()}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Pill size={64} color="#E5E7EB" />
-            <Text style={styles.emptyText}>Henüz ilaç eklenmemiş.</Text>
-            <Text style={styles.emptySubText}>{activeProfile.name} için liste boş.</Text>
+            <Text style={styles.emptyText}>Burada bir şey yok.</Text>
+            <Text style={styles.emptySubText}>{activeTab === 'active' ? 'Aktif bir ilacınız yok, ekleyiniz.' : 'Henüz biten bir ilacın yok.'}</Text>
           </View>
         }
         renderItem={({ item }) => (
           <MedicineCard 
-          id={item.id}
-          name={item.name}
-          totalDays={item.totalDays}
-          dailyDose={item.daily_dose}
-          daysLeft={item.daysLeft}
-          startDateText={item.startDateText}
-          endDateText={item.endDateText}
-          onDelete={async (id: number) => {
-          await deleteMedicines(id);
-          const meds = await getMedicines(activeProfile.id);
-          setMyMeds(meds);
-        }}
+            id={item.id}
+            name={item.name}
+            totalDays={item.totalDays}
+            dailyDose={item.daily_dose}
+            daysLeft={item.daysLeft}
+            startDateText={item.startDateText}
+            endDateText={item.endDateText}
+            isCompleted={activeTab === 'completed'}
+            onDelete={async (id: number) => {
+              await deleteMedicines(id);
+              loadData();
+            }}
           />
         )}
       />
 
-<TouchableOpacity
-  style={[styles.fab, { backgroundColor: activeProfile.color }]}
-  activeOpacity={0.8}
-  onPress={() =>
-    router.push({
-      pathname: '/add',
-      params: { profileId: String(activeProfile.id) },
-    })
-  }
->
-  <Plus color="white" size={32} />
-</TouchableOpacity>
-
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: activeProfile.color }]}
+        activeOpacity={0.8}
+        onPress={() => router.push({ pathname: '/add', params: { profileId: String(activeProfile.id) } })}
+      >
+        <Plus color="white" size={32} />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -210,23 +233,32 @@ const styles = StyleSheet.create({
   dot: { width: 10, height: 10, borderRadius: 5, marginRight: 8 },
   profileText: { fontSize: 15, fontWeight: '700', color: '#374151', marginRight: 4 },
   
-  fab: { 
-    position: 'absolute', 
-    bottom: 40, 
-    right: 25, 
-    width: 65, 
-    height: 65, 
-    borderRadius: 33, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    elevation: 20,
-    zIndex: 9999,
-    shadowColor: '#000', 
-    shadowOpacity: 0.4, 
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 }
+tabContainer: { 
+    flexDirection: 'row', 
+    backgroundColor: '#E5E7EB', 
+    borderRadius: 14, 
+    padding: 4, 
+    marginBottom: 15,
+    width: '100%',
+    alignItems: 'center',
   },
+  tabButton: { 
+    width: '50%',
+    paddingVertical: 10, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    borderRadius: 11,
+  },
+tabText: { 
+  fontWeight: '700', 
+  color: '#6B7280',
+  fontSize: 14,
+},
+activeTabText: { 
+  color: '#FFF',
+},
 
+  fab: { position: 'absolute', bottom: 40, right: 25, width: 65, height: 65, borderRadius: 33, justifyContent: 'center', alignItems: 'center', elevation: 20, zIndex: 9999, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 5 } },
   fullScreenSelector: { flex: 1, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' },
   welcomeTitle: { fontSize: 30, fontWeight: '900', color: '#111827', marginBottom: 50 },
   selectorGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 30 },
@@ -236,7 +268,6 @@ const styles = StyleSheet.create({
   selectorInitial: { fontSize: 36, fontWeight: 'bold', color: '#FFF' },
   selectorName: { fontSize: 16, fontWeight: '800', color: '#374151', marginTop: 10 },
   selectorActions: { flexDirection: 'row', marginTop: 8 },
-
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
   modalContent: { backgroundColor: 'white', borderRadius: 32, padding: 28 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
@@ -247,7 +278,6 @@ const styles = StyleSheet.create({
   selectedCircle: { borderWidth: 4, borderColor: '#E5E7EB', transform: [{ scale: 1.1 }] },
   saveButton: { padding: 20, borderRadius: 18, alignItems: 'center' },
   saveButtonText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
-
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100 },
   emptyText: { fontSize: 20, fontWeight: '700', color: '#374151', marginTop: 20 },
   emptySubText: { fontSize: 14, color: '#6B7280', marginTop: 5 }
