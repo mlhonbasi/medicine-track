@@ -1,6 +1,6 @@
 import { Activity, CheckCircle, Pill, Trash2 } from 'lucide-react-native';
 import React, { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
 interface MedicineProps {
@@ -8,6 +8,7 @@ interface MedicineProps {
   name: string;
   daysLeft: number;
   totalDays: number;
+  totalTablets?: number;
   dailyDose: number;
   startDateText?: string | null;
   endDateText?: string | null;
@@ -15,7 +16,7 @@ interface MedicineProps {
   onDelete: (id: number) => void;
 }
 
-export const MedicineCard = ({ id, name, daysLeft, totalDays, dailyDose, startDateText, endDateText, isCompleted, onDelete }: MedicineProps) => {
+export const MedicineCard = ({ id, name, daysLeft, totalDays, totalTablets, dailyDose, startDateText, endDateText, isCompleted, onDelete }: MedicineProps) => {
   const safeTotalDays = totalDays > 0 ? totalDays : 1;
   const safeDaysLeft = Math.max(0, Math.min(daysLeft, safeTotalDays));
   const progress = Math.min(1, Math.max(0, (safeTotalDays - safeDaysLeft) / safeTotalDays));
@@ -35,6 +36,17 @@ export const MedicineCard = ({ id, name, daysLeft, totalDays, dailyDose, startDa
   };
 
   const colors = getStatusColor(safeDaysLeft / safeTotalDays);
+
+  const confirmDelete = () => {
+    Alert.alert(
+      "İlacı Sil",
+      `${name} listenden silinecek. Emin misin?`,
+      [
+        { text: "Vazgeç", style: "cancel" },
+        { text: "Sil", style: "destructive", onPress: () => onDelete(id) }
+      ]
+    );
+  };
 
   const animatedBarStyle = useAnimatedStyle(() => ({
     width: `${progressWidth.value * 100}%`,
@@ -73,11 +85,11 @@ export const MedicineCard = ({ id, name, daysLeft, totalDays, dailyDose, startDa
             <View style={styles.metaRow}>
               {startDateText && <Text style={styles.meta}>Başlangıç: {startDateText}</Text>}
               {endDateText && <Text style={styles.meta}>Bitiş: {endDateText}</Text>}
-              {isCompleted && <Text style={styles.meta}>Adet: {totalDays}</Text>}
+              {isCompleted && <Text style={styles.meta}>Adet: {totalTablets ?? '-'}</Text>}
             </View>
           </View>
 
-          <TouchableOpacity onPress={() => onDelete(id)} style={styles.deleteButton}>
+          <TouchableOpacity onPress={confirmDelete} style={styles.deleteButton}>
             <Trash2 color="#EF4444" size={20} />
           </TouchableOpacity>
         </View>

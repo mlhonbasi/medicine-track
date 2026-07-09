@@ -201,6 +201,7 @@ const completedMeds = (myMeds || []).filter(m => {
             id={item.id}
             name={item.name}
             totalDays={item.totalDays}
+            totalTablets={item.total_tablets}
             dailyDose={item.daily_dose}
             daysLeft={item.daysLeft}
             startDateText={item.startDateText}
