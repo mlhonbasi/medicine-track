@@ -203,6 +203,9 @@ const completedMeds = (myMeds || []).filter(m => {
             totalDays={item.totalDays}
             totalTablets={item.total_tablets}
             dailyDose={item.daily_dose}
+            activeBoxNumber={item.activeBoxNumber}
+            daysLeftInActiveBox={item.daysLeftInActiveBox}
+            boxesInStock={item.boxesInStock}
             daysLeft={item.daysLeft}
             startDateText={item.startDateText}
             endDateText={item.endDateText}

@@ -15,10 +15,18 @@ export default function AddMedicine() {
   }
 
   const [query, setQuery] = useState('');
-  const [total, setTotal] = useState('');
+  const [boxCount, setBoxCount] = useState('');
+  const [unitsPerBox, setUnitsPerBox] = useState('');
   const [daily, setDaily] = useState('');
 
   const { addMedicine } = useDatabase();
+
+  const boxCountNum = parseInt(boxCount, 10);
+  const unitsPerBoxNum = parseInt(unitsPerBox, 10);
+  const totalPreview =
+    Number.isFinite(boxCountNum) && Number.isFinite(unitsPerBoxNum) && boxCountNum > 0 && unitsPerBoxNum > 0
+      ? boxCountNum * unitsPerBoxNum
+      : null;
 
   const goBackSafe = () => {
     if (router.canGoBack()) router.back();
@@ -26,7 +34,7 @@ export default function AddMedicine() {
   };
 
   const handleSave = async () => {
-    if (!query || !total || !daily) {
+    if (!query || !boxCount || !unitsPerBox || !daily) {
       Alert.alert("Hata", "Lütfen tüm alanları eksiksiz doldurun.");
       return;
     }
@@ -35,7 +43,8 @@ export default function AddMedicine() {
       await addMedicine(
         profileIdNum,
         query,
-        parseInt(total, 10),
+        parseInt(boxCount, 10),
+        parseInt(unitsPerBox, 10),
         parseInt(daily, 10)
       );
 
@@ -68,26 +77,39 @@ export default function AddMedicine() {
 
       <View style={styles.row}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.label}>Toplam Adet</Text>
-          <TextInput 
-            style={styles.input} 
-            placeholder="28" 
+          <Text style={styles.label}>Kutu Adedi</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="2"
             keyboardType="numeric"
-            value={total}
-            onChangeText={setTotal}
+            value={boxCount}
+            onChangeText={setBoxCount}
           />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.label}>Günlük Doz</Text>
-          <TextInput 
-            style={styles.input} 
-            placeholder="1" 
+          <Text style={styles.label}>Kutu Başına Adet</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="14"
             keyboardType="numeric"
-            value={daily}
-            onChangeText={setDaily}
+            value={unitsPerBox}
+            onChangeText={setUnitsPerBox}
           />
         </View>
       </View>
+
+      <Text style={styles.label}>Günlük Doz</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="1"
+        keyboardType="numeric"
+        value={daily}
+        onChangeText={setDaily}
+      />
+
+      {totalPreview !== null && (
+        <Text style={styles.previewText}>Toplam {totalPreview} adet takip edilecek.</Text>
+      )}
 
       <TouchableOpacity style={styles.button} onPress={handleSave}>
         <Text style={styles.buttonText}>Hatırlatıcıyı Başlat</Text>
@@ -108,6 +130,7 @@ const styles = StyleSheet.create({
     elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2,
   },
   row: { flexDirection: 'row', gap: 16 },
+  previewText: { fontSize: 13, color: '#6B7280', fontWeight: '600', marginLeft: 4, marginTop: -8, marginBottom: 4 },
   button: {
     backgroundColor: '#4F46E5', paddingVertical: 20, borderRadius: 20, alignItems: 'center',
     marginTop: 20, shadowColor: '#4F46E5', shadowOpacity: 0.4, shadowRadius: 10,

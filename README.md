@@ -5,9 +5,10 @@ Aile bireyleri için çoklu profil destekli, bildirimlerle ilaç takibi yapan bi
 ## Özellikler
 
 - **Çoklu profil** — her aile üyesi için ayrı renk/avatar ile ayrı ilaç listesi.
-- **İlaç ekleme** — ilaç adı, toplam adet ve günlük doz girilir; kullanım süresi ve bitiş tarihi otomatik hesaplanır.
+- **İlaç ekleme** — ilaç adı, kutu adedi, kutu başına adet ve günlük doz girilir; toplam adet, kullanım süresi ve bitiş tarihi otomatik hesaplanır.
+- **Kutu takibi** — hangi kutunun kullanımda olduğu ve stokta kaç kutu kaldığı otomatik hesaplanıp kartta gösterilir; stok tükendiğinde uyarı verir.
 - **Aktif / Bitenler sekmeleri** — süresi dolan ilaçlar listeden kaybolmak yerine "Bitenler" sekmesinde geçmiş olarak kalır.
-- **Renk kodlu ilerleme çubuğu** — kalan güne göre yeşilden kırmızıya değişen görsel uyarı.
+- **Renk kodlu durum rozeti ve ilerleme çubuğu** — kalan güne göre yeşilden kırmızıya değişen görsel uyarı.
 - **Bildirimler** — ilaç bitmeden 2 gün önce ve bittiği gün hatırlatma.
 - **Tamamen yerel veri** — expo-sqlite ile cihaz üzerinde saklama, internet bağlantısı gerektirmez.
 

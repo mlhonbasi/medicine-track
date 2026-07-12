@@ -64,9 +64,19 @@ export const useDatabase = () => {
           daily_dose INTEGER,
           start_date TEXT,
           end_date TEXT,
+          box_count INTEGER,
+          units_per_box INTEGER,
           FOREIGN KEY (profile_id) REFERENCES profiles (id) ON DELETE CASCADE
         );
       `);
+
+      // Eski kurulumlarda tablo zaten vardı; yeni kutu kolonlarını sonradan ekliyoruz.
+      try {
+        await database.execAsync('ALTER TABLE medicines ADD COLUMN box_count INTEGER;');
+      } catch {}
+      try {
+        await database.execAsync('ALTER TABLE medicines ADD COLUMN units_per_box INTEGER;');
+      } catch {}
 
       setDb(database);
       setReady(true);
@@ -110,13 +120,22 @@ export const useDatabase = () => {
     return await db.getAllAsync('SELECT * FROM profiles');
   };
 
-  const addMedicine = async (profileId: number, name: string, total: number, daily: number) => {
+  const addMedicine = async (
+    profileId: number,
+    name: string,
+    boxCount: number,
+    unitsPerBox: number,
+    daily: number
+  ) => {
     const db = ensureDb();
 
     if (!Number.isFinite(profileId)) throw new Error('Profil bulunamadı.');
     if (!name?.trim()) throw new Error('İlaç adı boş olamaz.');
-    if (!Number.isFinite(total) || total <= 0) throw new Error('Toplam adet 0 olamaz.');
+    if (!Number.isFinite(boxCount) || boxCount <= 0) throw new Error('Kutu adedi 0 olamaz.');
+    if (!Number.isFinite(unitsPerBox) || unitsPerBox <= 0) throw new Error('Kutu başına adet 0 olamaz.');
     if (!Number.isFinite(daily) || daily <= 0) throw new Error('Günlük doz 0 olamaz.');
+
+    const total = boxCount * unitsPerBox;
 
     const profileRow: any = await db.getFirstAsync(
       'SELECT name FROM profiles WHERE id = ?', 
@@ -143,8 +162,8 @@ export const useDatabase = () => {
 
     
     const result = await db.runAsync(
-      'INSERT INTO medicines (profile_id, name, total_tablets, daily_dose, start_date, end_date) VALUES (?,?,?,?,?,?)',
-      [profileId, name, total, daily, startDate.toISOString(), endDate.toISOString()]
+      'INSERT INTO medicines (profile_id, name, total_tablets, daily_dose, start_date, end_date, box_count, units_per_box) VALUES (?,?,?,?,?,?,?,?)',
+      [profileId, name, total, daily, startDate.toISOString(), endDate.toISOString(), boxCount, unitsPerBox]
     );
 
     const ok = await ensureNotificationReady();
@@ -153,10 +172,12 @@ export const useDatabase = () => {
     if (ok) {
     // BİLDİRİM 1: 2 GÜN ÖNCESİ (Sadece ilaç süresi 2 günden fazlaysa)
     if (daysDuration > 2 && twoDaysBefore.getTime() > Date.now()) {
+      const boxesLeftAt2Days = Math.max(1, Math.ceil((daily * 2) / unitsPerBox));
+      const boxWord = boxesLeftAt2Days === 1 ? 'son kutun' : `son ${boxesLeftAt2Days} kutun`;
       const id1 = await Notifications.scheduleNotificationAsync({
         content: {
           title: `${profileName}: İlacın Azalıyor! ⚠️`,
-          body: `${name} ilacı için yaklaşık 2 günlük dozun kaldı. Yenisini almayı unutma.`,
+          body: `${name} ilacı için yaklaşık 2 günlük dozun kaldı (${boxWord}). Yenisini almayı unutma.`,
           ...(Platform.OS === 'android' ? { channelId: 'default' } : {}),
         },
         trigger: { type: SchedulableTriggerInputTypes.DATE, date: twoDaysBefore },
@@ -168,7 +189,7 @@ export const useDatabase = () => {
       const id2 = await Notifications.scheduleNotificationAsync({
         content: {
           title: `${profileName}: İlaç Bitti! ⚠️`,
-          body: `${profileName} için ${name} ilacı bugün bitti. Yenisini almalısın.`,
+          body: `${profileName} için ${name} ilacı bugün bitti (0 kutu kaldı). Yenisini almalısın.`,
           ...(Platform.OS === 'android' ? { channelId: 'default' } : {}),
         },
         trigger: { type: SchedulableTriggerInputTypes.DATE, date: endDate },
@@ -215,10 +236,44 @@ export const useDatabase = () => {
       // Eğer bugün bittiyse (veya geçtiyse) 0 dönsün, yoksa kalan gün
       const daysLeft = Math.max(0, diffDays + 1);
 
+      // 3. KUTU KIRILIMI (tarih bazlı tahmin — gün hesabıyla aynı toplam adet üzerinden,
+      // kutu kutu ayrı yuvarlama yapmıyoruz ki gün kaybı (fire) oluşmasın).
+      // "Kullanımdaki kutu" biterse stoktaki bir kutu düşer — bunu simüle ediyoruz.
+      const unitsPerBox = Number(m.units_per_box) || null;
+      const boxCountTotal = Number(m.box_count) || null;
+
+      let boxesLeft: number | null = null;
+      let activeBoxNumber: number | null = null;
+      let daysLeftInActiveBox: number | null = null;
+      let boxesInStock: number | null = null;
+
+      if (unitsPerBox && boxCountTotal) {
+        const daysPerBox = unitsPerBox / dailyDose;
+        const daysPassed = Math.max(0, Math.min(totalDays, totalDays - daysLeft));
+        // Kayan nokta hassasiyeti yüzünden tam kutu sınırında yanlışlıkla bir sonrakine
+        // geçmemek için ufak bir tolerans (epsilon) ekliyoruz.
+        const boxesFullyUsed = Math.min(boxCountTotal, Math.floor(daysPassed / daysPerBox + 1e-9));
+
+        if (daysLeft > 0 && boxesFullyUsed < boxCountTotal) {
+          activeBoxNumber = boxesFullyUsed + 1;
+          const daysIntoActiveBox = daysPassed - boxesFullyUsed * daysPerBox;
+          daysLeftInActiveBox = Math.max(1, Math.ceil(daysPerBox - daysIntoActiveBox));
+          boxesInStock = boxCountTotal - activeBoxNumber;
+          boxesLeft = boxesInStock + 1;
+        } else {
+          boxesInStock = 0;
+          boxesLeft = 0;
+        }
+      }
+
       return {
         ...m,
         totalDays,
         daysLeft,
+        boxesLeft,
+        activeBoxNumber,
+        daysLeftInActiveBox,
+        boxesInStock,
         startDateText: m.start_date ? formatTR(m.start_date) : null,
         endDateText: m.end_date ? formatTR(m.end_date) : null,
       };
