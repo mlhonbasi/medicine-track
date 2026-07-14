@@ -151,7 +151,7 @@ const completedMeds = (myMeds || []).filter(m => {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: `${activeProfile.color}0F` }]}>
       <View style={styles.header}>
         <Text style={styles.titleText}>İlaçlarım</Text>
         <TouchableOpacity style={styles.profileBadge} onPress={() => setActiveProfile(null)}>
